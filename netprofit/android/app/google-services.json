@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "744426332508",
+    "project_id": "rukmal-fish-delivery-4fb4f",
+    "storage_bucket": "rukmal-fish-delivery-4fb4f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744426332508:android:ec15eef162224b356ca199",
+        "android_client_info": {
+          "package_name": "com.example.netproft"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCEPezCXFW2xzNZdL38jWvyuJWEdwmO-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744426332508:android:27c1f82cf8d35d826ca199",
+        "android_client_info": {
+          "package_name": "com.rukmal.netprofit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCEPezCXFW2xzNZdL38jWvyuJWEdwmO-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
