@@ -27,8 +27,16 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (context) => Center(child: CircularProgressIndicator(color: Colors.white)),
       );
 
+      // Initialize Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: [
+          'email',
+          'profile',
+        ],
+      );
+
       // Trigger Google Sign-In
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       
       if (googleUser == null) {
         Navigator.pop(context); // Close loading
@@ -167,6 +175,8 @@ class _LoginScreenState extends State<LoginScreen> {
           // 2. Animated Swimming Fish (Layered behind the form)
           SwimmingFish(fishImage: 'assets/fish1.png'),
           SwimmingFish(fishImage: 'assets/fish2.png'),
+          SwimmingFish(fishImage: 'assets/fish3.png'),
+          SwimmingFish(fishImage: 'assets/fish4.png'),
 
           // 3. Content
           Center(

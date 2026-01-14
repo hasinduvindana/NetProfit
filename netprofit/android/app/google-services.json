@@ -12,7 +12,20 @@
           "package_name": "com.example.netproft"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "744426332508-47i0n38imu1ca6jm6gplst8p390ks1c0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.netproft",
+            "certificate_hash": "3b074ea0d80ffcf9fd0960a436df7f80d11646e2"
+          }
+        },
+        {
+          "client_id": "744426332508-h79e25822tjcclf1hsspmke4m0fu5tnu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCCEPezCXFW2xzNZdL38jWvyuJWEdwmO-c"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744426332508-h79e25822tjcclf1hsspmke4m0fu5tnu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "744426332508-jh12l6bm5d46mbqmak79aqvivai7khd5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.netproft"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +56,12 @@
           "package_name": "com.rukmal.netprofit"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "744426332508-h79e25822tjcclf1hsspmke4m0fu5tnu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCCEPezCXFW2xzNZdL38jWvyuJWEdwmO-c"
@@ -39,7 +69,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744426332508-h79e25822tjcclf1hsspmke4m0fu5tnu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "744426332508-jh12l6bm5d46mbqmak79aqvivai7khd5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.netproft"
+              }
+            }
+          ]
         }
       }
     }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'login_screen.dart';
+import '../widgets/fish_animation.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -21,10 +22,19 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 2, 2, 2),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      body: Stack(
+        children: [
+          // Animated Swimming Fish
+          SwimmingFish(fishImage: 'assets/fish1.png'),
+          SwimmingFish(fishImage: 'assets/fish2.png'),
+          SwimmingFish(fishImage: 'assets/fish3.png'),
+          SwimmingFish(fishImage: 'assets/fish4.png'),
+          
+          // Content
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
             ZoomIn(
               duration: Duration(seconds: 5),
               manualTrigger: false,
@@ -41,6 +51,8 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
           ],
         ),
+      ),
+        ],
       ),
     );
   }

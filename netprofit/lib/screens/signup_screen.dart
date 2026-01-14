@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/fish_animation.dart';
 
 class SignUpScreen extends StatefulWidget {
   @override
@@ -120,6 +121,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       body: Stack(
         children: [
           Container(decoration: BoxDecoration(image: DecorationImage(image: AssetImage("assets/login-bg.jpg"), fit: BoxFit.cover))),
+          
+          // Animated Swimming Fish
+          SwimmingFish(fishImage: 'assets/fish1.png'),
+          SwimmingFish(fishImage: 'assets/fish2.png'),
+          SwimmingFish(fishImage: 'assets/fish3.png'),
+          SwimmingFish(fishImage: 'assets/fish4.png'),
+          
           Center(
             child: GlassContainer(
               child: Form(
