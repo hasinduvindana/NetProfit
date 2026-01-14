@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui';
 import 'emp-sal-adv.dart';
 import 'ice-cost.dart';
+import 'fuel-cost.dart';
+import 'other-cost.dart';
 
 class ExpensesPage extends StatelessWidget {
   const ExpensesPage({super.key});
@@ -63,14 +65,14 @@ class ExpensesPage extends StatelessWidget {
                     "Fuel Cost", 
                     Icons.local_gas_station, 
                     Colors.orangeAccent, 
-                    null // Add page later
+                    FuelCostPage()
                   ),
                   _buildGlassyButton(
                     context, 
                     "Other Expenses", 
                     Icons.more_horiz, 
                     Colors.blueGrey, 
-                    null // Add page later
+                    OtherCostPage()
                   ),
                 ],
               ),

@@ -10,24 +10,22 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-class IceCostPage extends StatefulWidget {
-  const IceCostPage({super.key});
+class OtherCostPage extends StatefulWidget {
+  const OtherCostPage({super.key});
 
   @override
-  _IceCostPageState createState() => _IceCostPageState();
+  _OtherCostPageState createState() => _OtherCostPageState();
 }
 
-class _IceCostPageState extends State<IceCostPage> {
-  final TextEditingController _qtyController = TextEditingController();
+class _OtherCostPageState extends State<OtherCostPage> {
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final LocalAuthentication _auth = LocalAuthentication();
 
-  // Filter States
   DateTime _selectedDate = DateTime.now();
   bool _isMonthFilter = false;
 
-  // Generates unique hash of current user UID to match emp-data
   String _getFingerprintHash() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return '';
@@ -36,8 +34,8 @@ class _IceCostPageState extends State<IceCostPage> {
 
   // --- SUBMISSION LOGIC ---
   Future<void> _handleSubmit() async {
-    if (_qtyController.text.isEmpty || _amountController.text.isEmpty) {
-      _showSnackBar("Please fill Quantity and Amount", Colors.red);
+    if (_nameController.text.isEmpty || _amountController.text.isEmpty) {
+      _showSnackBar("Please enter Expense Name and Amount", Colors.red);
       return;
     }
 
@@ -49,7 +47,7 @@ class _IceCostPageState extends State<IceCostPage> {
       }
 
       bool authenticated = await _auth.authenticate(
-        localizedReason: 'Scan fingerprint to confirm Ice Payment',
+        localizedReason: 'Scan fingerprint to confirm Other Expense',
         options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
       );
 
@@ -65,7 +63,7 @@ class _IceCostPageState extends State<IceCostPage> {
           String adminName = empQuery.docs.first['first_name'];
           await _processPayment(adminName);
         } else {
-          _showSnackBar("Fingerprint not recognized in system", Colors.red);
+          _showSnackBar("Fingerprint not recognized", Colors.red);
         }
       }
     } on PlatformException catch (e) {
@@ -75,12 +73,11 @@ class _IceCostPageState extends State<IceCostPage> {
 
   Future<void> _processPayment(String adminName) async {
     final double amount = double.parse(_amountController.text);
-    final double qty = double.parse(_qtyController.text);
     final DateTime now = DateTime.now();
 
-    // Insert into ice-cost collection
-    await FirebaseFirestore.instance.collection('ice-cost').add({
-      'quantity': qty,
+    // 1. Insert into 'other-cost' collection
+    await FirebaseFirestore.instance.collection('other-cost').add({
+      'expense_name': _nameController.text,
       'amount': amount,
       'description': _descController.text,
       'date_time': FieldValue.serverTimestamp(),
@@ -90,9 +87,11 @@ class _IceCostPageState extends State<IceCostPage> {
       'day': now.day,
     });
 
+    // 2. Update monthly summary
     await _updateMonthlyExpense(now.year, now.month, amount);
-    _showSnackBar("Payment Recorded Successfully", Colors.green);
-    _qtyController.clear(); _amountController.clear(); _descController.clear();
+    
+    _showSnackBar("Expense Saved Successfully", Colors.green);
+    _nameController.clear(); _amountController.clear(); _descController.clear();
     setState(() {});
   }
 
@@ -106,7 +105,7 @@ class _IceCostPageState extends State<IceCostPage> {
 
     if (query.docs.isNotEmpty) {
       await query.docs.first.reference.update({
-        'total-exp': FieldValue.increment(amount),
+        'total-exp': FieldValue.increment(amount), // Atomic increment
         'timestamp': FieldValue.serverTimestamp(),
       });
     } else {
@@ -119,6 +118,7 @@ class _IceCostPageState extends State<IceCostPage> {
   // --- PDF GENERATION ---
   Future<void> _generatePdf(List<QueryDocumentSnapshot> docs) async {
     final pdf = pw.Document();
+    final logo = await imageFromAssetBundle('assets/images/logo-rounded.png');
     double total = docs.fold(0, (sum, item) => sum + (item['amount'] as num).toDouble());
 
     pdf.addPage(pw.Page(
@@ -129,30 +129,20 @@ class _IceCostPageState extends State<IceCostPage> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Container(
-                width: 60,
-                height: 60,
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.blue900,
-                  borderRadius: pw.BorderRadius.circular(8),
-                ),
-                child: pw.Center(
-                  child: pw.Text("ICE", style: pw.TextStyle(color: PdfColors.white, fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                ),
-              ),
+              pw.Image(logo, width: 60, height: 60),
               pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
                 pw.Text("Rukmal Fish Delivery", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                pw.Text("Downloaded: ${DateTime.now().toString().split('.')[0]}"),
-                pw.Text("Filter: ${_isMonthFilter ? 'Month' : 'Date'}"),
+                pw.Text("Other Expenses Report"),
+                pw.Text("Date: ${DateTime.now().toString().split('.')[0]}"),
               ]),
             ],
           ),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
-            headers: ['Date', 'Qty', 'Amount', 'Confirmed By'],
+            headers: ['Date', 'Expense Name', 'Amount', 'Confirmed By'],
             data: docs.map((doc) {
               final date = (doc['date_time'] as Timestamp).toDate();
-              return ["${date.day}/${date.month}/${date.year}", doc['quantity'], doc['amount'], doc['confirmed_by']];
+              return ["${date.day}/${date.month}", doc['expense_name'], doc['amount'], doc['confirmed_by']];
             }).toList(),
           ),
           pw.SizedBox(height: 20),
@@ -160,29 +150,31 @@ class _IceCostPageState extends State<IceCostPage> {
         ],
       ),
     ));
-    await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'Ice_Payment_History.pdf');
+    await Printing.layoutPdf(onLayout: (format) async => pdf.save(), name: 'Other_Expenses.pdf');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(title: const Text("Payments for ICE", style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(title: const Text("Payments for Other Expenses", style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent, elevation: 0),
       body: Stack(
         children: [
-          Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.blue.shade900, Colors.black]))),
+          Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.blueGrey.shade900, Colors.black]))),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  _buildGlassyInput("Quantity (Boxes)", _qtyController, const TextInputType.numberWithOptions(decimal: true)),
+                  _buildGlassyInput("Expense Name", _nameController, TextInputType.text),
                   _buildGlassyInput("Amount (LKR)", _amountController, TextInputType.number),
                   _buildGlassyInput("Description (Optional)", _descController, TextInputType.text, maxLines: 2),
+                  
                   Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                    _buildActionButton("Clear", Colors.grey, () => setState(() { _qtyController.clear(); _amountController.clear(); _descController.clear(); })),
+                    _buildActionButton("Clear", Colors.grey, () => setState(() { _nameController.clear(); _amountController.clear(); _descController.clear(); })),
                     _buildActionButton("Submit", Colors.green, _handleSubmit),
                   ]),
+                  
                   const SizedBox(height: 30),
                   const Divider(color: Colors.white24),
                   _buildHistorySection(),
@@ -196,7 +188,7 @@ class _IceCostPageState extends State<IceCostPage> {
   }
 
   Widget _buildHistorySection() {
-    Query query = FirebaseFirestore.instance.collection('ice-cost')
+    Query query = FirebaseFirestore.instance.collection('other-cost')
         .where('year', isEqualTo: _selectedDate.year)
         .where('month', isEqualTo: _selectedDate.month);
     
@@ -205,9 +197,9 @@ class _IceCostPageState extends State<IceCostPage> {
     return Column(
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text("History", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Expense History", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           Row(children: [
-            const Text("Month Filter", style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const Text("Month", style: TextStyle(color: Colors.white70, fontSize: 12)),
             Switch(value: _isMonthFilter, onChanged: (v) => setState(() => _isMonthFilter = v)),
             IconButton(icon: const Icon(Icons.calendar_today, color: Colors.white, size: 20), onPressed: () async {
               DateTime? p = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2024), lastDate: DateTime(2100));
@@ -222,10 +214,13 @@ class _IceCostPageState extends State<IceCostPage> {
             final docs = snapshot.data!.docs;
             return Column(children: [
               SingleChildScrollView(scrollDirection: Axis.horizontal, child: DataTable(
-                columns: const [DataColumn(label: Text("Date", style: TextStyle(color: Colors.white))), DataColumn(label: Text("Qty", style: TextStyle(color: Colors.white))), DataColumn(label: Text("LKR", style: TextStyle(color: Colors.white))), DataColumn(label: Text("By", style: TextStyle(color: Colors.white)))],
+                columns: const [
+                  DataColumn(label: Text("Expense", style: TextStyle(color: Colors.white))),
+                  DataColumn(label: Text("Amount", style: TextStyle(color: Colors.white))),
+                  DataColumn(label: Text("By", style: TextStyle(color: Colors.white)))
+                ],
                 rows: docs.map((d) => DataRow(cells: [
-                  DataCell(Text("${(d['date_time'] as Timestamp).toDate().day}/${(d['date_time'] as Timestamp).toDate().month}", style: const TextStyle(color: Colors.white))),
-                  DataCell(Text("${d['quantity']}", style: const TextStyle(color: Colors.white))),
+                  DataCell(Text("${d['expense_name']}", style: const TextStyle(color: Colors.white))),
                   DataCell(Text("${d['amount']}", style: const TextStyle(color: Colors.white))),
                   DataCell(Text("${d['confirmed_by']}", style: const TextStyle(color: Colors.white))),
                 ])).toList(),
@@ -261,11 +256,7 @@ class _IceCostPageState extends State<IceCostPage> {
   }
 
   Widget _buildActionButton(String label, Color col, VoidCallback p) {
-    return ElevatedButton(
-      onPressed: p, 
-      style: ElevatedButton.styleFrom(backgroundColor: col, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), 
-      child: Text(label, style: const TextStyle(color: Colors.white))
-    );
+    return ElevatedButton(onPressed: p, style: ElevatedButton.styleFrom(backgroundColor: col, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: Text(label, style: const TextStyle(color: Colors.white)));
   }
 
   void _showSnackBar(String m, Color c) {
