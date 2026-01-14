@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
+import 'manage-emp.dart';
+import 'view-emp.dart';
+
 
 class AdminDashboard extends StatelessWidget {
   final String userName;
@@ -146,39 +149,23 @@ class AdminDashboard extends StatelessWidget {
           
           // Dashboard Content
           Expanded(
-            child: Padding(
+            child: ListView(
               padding: EdgeInsets.all(16),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildDashboardCard(
-                    icon: Icons.people,
-                    title: 'Manage Users',
-                    color: Colors.purple,
-                    onTap: () {},
-                  ),
-                  _buildDashboardCard(
-                    icon: Icons.inventory,
-                    title: 'Products',
-                    color: Colors.orange,
-                    onTap: () {},
-                  ),
-                  _buildDashboardCard(
-                    icon: Icons.shopping_cart,
-                    title: 'Orders',
-                    color: Colors.green,
-                    onTap: () {},
-                  ),
-                  _buildDashboardCard(
-                    icon: Icons.analytics,
-                    title: 'Analytics',
-                    color: Colors.blue,
-                    onTap: () {},
-                  ),
-                ],
-              ),
+              children: [
+                _buildListTile(
+                  icon: Icons.badge,
+                  title: 'Manage Employee',
+                  color: Colors.blueAccent,
+                  onTap: () => Navigator.push(context, _createRoute(ManageEmp())),
+                ),
+                SizedBox(height: 12),
+                _buildListTile(
+                  icon: Icons.group,
+                  title: 'Current Employees',
+                  color: Colors.teal,
+                  onTap: () => Navigator.push(context, _createRoute(ViewEmp())),
+                ),
+              ],
             ),
           ),
         ],
@@ -186,7 +173,7 @@ class AdminDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildDashboardCard({
+  Widget _buildListTile({
     required IconData icon,
     required String title,
     required Color color,
@@ -194,36 +181,32 @@ class AdminDashboard extends StatelessWidget {
   }) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.7), color],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 50, color: Colors.white),
-              SizedBox(height: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(icon, color: color, size: 32),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        trailing: Icon(Icons.arrow_forward, color: color),
+        onTap: onTap,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
+    );
+  }
+
+  Route _createRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
+        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.ease));
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
     );
   }
 }

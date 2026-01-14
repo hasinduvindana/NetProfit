@@ -45,11 +45,20 @@ dependencies:
   # Animations for the splash and hover effects
   animate_do: ^3.0.0
 
+  local_auth: ^2.3.0
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  crypto: ^3.0.2  
+
+  local_auth_android: ^1.0.0
+
+  local_auth_ios: ^1.0.0
+
 dev_dependencies:
+
   flutter_test:
     sdk: flutter
 
