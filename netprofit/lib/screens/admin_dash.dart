@@ -4,7 +4,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
 import 'manage-emp.dart';
 import 'view-emp.dart';
+import 'salary_status.dart'; // Add this with your other imports
 import 'expenses.dart'; // Add this with your other imports
+
 
 
 class AdminDashboard extends StatelessWidget {
@@ -166,6 +168,14 @@ class AdminDashboard extends StatelessWidget {
                   color: Colors.teal,
                   onTap: () => Navigator.push(context, _createRoute(ViewEmp())),
                 ),
+                SizedBox(height: 12),
+                _buildListTile(
+                icon: Icons.monetization_on,
+                title: 'Salary Status',
+                color: Colors.orangeAccent,
+                onTap: () => Navigator.push(context, _createRoute(SalaryStatusPage())), // Ensure you import this page
+                ),
+
                 SizedBox(height: 12),
                 _buildListTile(
                   icon: Icons.account_balance_wallet,

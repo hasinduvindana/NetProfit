@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
+import 'dart:convert'; // Required for utf8 encoding
+import 'package:crypto/crypto.dart'; // Required for SHA-256 hashing
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -21,15 +19,16 @@ class _OtherCostPageState extends State<OtherCostPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  final LocalAuthentication _auth = LocalAuthentication();
 
   DateTime _selectedDate = DateTime.now();
   bool _isMonthFilter = false;
 
-  String _getFingerprintHash() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return '';
-    return sha256.convert(utf8.encode(user.uid)).toString();
+  // --- PIN VERIFICATION LOGIC ---
+
+  // Standard SHA-256 Hashing for PIN comparison
+  String _hashPin(String pin) {
+    var bytes = utf8.encode(pin);
+    return sha256.convert(bytes).toString();
   }
 
   // --- SUBMISSION LOGIC ---
@@ -39,60 +38,85 @@ class _OtherCostPageState extends State<OtherCostPage> {
       return;
     }
 
-    try {
-      bool canCheck = await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
-      if (!canCheck) {
-        _showSnackBar("Biometrics not available", Colors.orange);
-        return;
-      }
+    // Directly trigger the PIN prompt window
+    await _promptForPinDirectly();
+  }
 
-      bool authenticated = await _auth.authenticate(
-        localizedReason: 'Scan fingerprint to confirm Other Expense',
-        options: const AuthenticationOptions(biometricOnly: true, stickyAuth: true),
-      );
+  Future<void> _promptForPinDirectly() async {
+    final TextEditingController pinEntryController = TextEditingController();
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Authorize Other Expense"),
+        content: TextField(
+          controller: pinEntryController,
+          obscureText: true, // Masks digits for security
+          maxLength: 4,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(hintText: "Enter your 4-digit PIN"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel")
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              String enteredHash = _hashPin(pinEntryController.text.trim());
+              
+              // Search for an employee who owns this specific PIN hash
+              var query = await FirebaseFirestore.instance
+                  .collection('emp-data')
+                  .where('pin', isEqualTo: enteredHash)
+                  .limit(1)
+                  .get();
 
-      if (authenticated) {
-        String hashedVal = _getFingerprintHash();
-        var empQuery = await FirebaseFirestore.instance
-            .collection('emp-data')
-            .where('fingerprint', isEqualTo: hashedVal)
-            .limit(1)
-            .get();
-
-        if (empQuery.docs.isNotEmpty) {
-          String adminName = empQuery.docs.first['first_name'];
-          await _processPayment(adminName);
-        } else {
-          _showSnackBar("Fingerprint not recognized", Colors.red);
-        }
-      }
-    } on PlatformException catch (e) {
-      _showSnackBar("Security Error: ${e.message}", Colors.red);
-    }
+              if (query.docs.isNotEmpty) {
+                // PIN matched a specific employee automatically
+                String authorizingName = query.docs.first['first_name'];
+                Navigator.pop(context); // Close PIN dialog
+                await _processPayment(authorizingName); // Proceed with saving expense
+              } else {
+                _showSnackBar("Invalid PIN. Access Denied.", Colors.red);
+              }
+            },
+            child: const Text("Verify & Confirm"),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _processPayment(String adminName) async {
-    final double amount = double.parse(_amountController.text);
-    final DateTime now = DateTime.now();
+    try {
+      final double amount = double.parse(_amountController.text);
+      final DateTime now = DateTime.now();
 
-    // 1. Insert into 'other-cost' collection
-    await FirebaseFirestore.instance.collection('other-cost').add({
-      'expense_name': _nameController.text,
-      'amount': amount,
-      'description': _descController.text,
-      'date_time': FieldValue.serverTimestamp(),
-      'confirmed_by': adminName,
-      'year': now.year,
-      'month': now.month,
-      'day': now.day,
-    });
+      // 1. Insert into 'other-cost' collection
+      await FirebaseFirestore.instance.collection('other-cost').add({
+        'expense_name': _nameController.text,
+        'amount': amount,
+        'description': _descController.text,
+        'date_time': FieldValue.serverTimestamp(),
+        'confirmed_by': adminName,
+        'year': now.year,
+        'month': now.month,
+        'day': now.day,
+      });
 
-    // 2. Update monthly summary
-    await _updateMonthlyExpense(now.year, now.month, amount);
-    
-    _showSnackBar("Expense Saved Successfully", Colors.green);
-    _nameController.clear(); _amountController.clear(); _descController.clear();
-    setState(() {});
+      // 2. Update monthly summary
+      await _updateMonthlyExpense(now.year, now.month, amount);
+      
+      _showSnackBar("Expense Saved Successfully", Colors.green);
+      _nameController.clear(); 
+      _amountController.clear(); 
+      _descController.clear();
+      setState(() {});
+    } catch (e) {
+      _showSnackBar("Error saving expense: $e", Colors.red);
+    }
   }
 
   Future<void> _updateMonthlyExpense(int year, int month, double amount) async {
@@ -141,7 +165,8 @@ class _OtherCostPageState extends State<OtherCostPage> {
           pw.TableHelper.fromTextArray(
             headers: ['Date', 'Expense Name', 'Amount', 'Confirmed By'],
             data: docs.map((doc) {
-              final date = (doc['date_time'] as Timestamp).toDate();
+              final Timestamp? ts = doc['date_time'];
+              final date = ts != null ? ts.toDate() : DateTime.now();
               return ["${date.day}/${date.month}", doc['expense_name'], doc['amount'], doc['confirmed_by']];
             }).toList(),
           ),

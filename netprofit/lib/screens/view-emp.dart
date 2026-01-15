@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:local_auth/local_auth.dart';
 import 'dart:ui';
 
 class ViewEmp extends StatelessWidget {
-  final LocalAuthentication auth = LocalAuthentication();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,7 +201,7 @@ class ViewEmp extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _authenticateAndUpdate(
+              _showUpdateConfirmation(
                 context,
                 doc,
                 firstNameController.text,
@@ -220,44 +217,7 @@ class ViewEmp extends StatelessWidget {
     );
   }
 
-  Future<void> _authenticateAndUpdate(
-    BuildContext context,
-    DocumentSnapshot doc,
-    String firstName,
-    String lastName,
-    String email,
-    String salary,
-  ) async {
-    try {
-      // Check if biometrics are available
-      bool canCheckBiometrics = await auth.canCheckBiometrics;
-      bool isDeviceSupported = await auth.isDeviceSupported();
-
-      if (!canCheckBiometrics || !isDeviceSupported) {
-        // Fallback: Show simple confirmation dialog
-        _showSimpleConfirmation(context, doc, firstName, lastName, email, salary);
-        return;
-      }
-
-      bool authenticated = await auth.authenticate(
-        localizedReason: 'Scan fingerprint to update employee',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-
-      if (authenticated) {
-        await _updateEmployeeData(context, doc, firstName, lastName, email, salary);
-      }
-    } on Exception catch (e) {
-      print('Authentication error: $e');
-      // Fallback to simple confirmation
-      _showSimpleConfirmation(context, doc, firstName, lastName, email, salary);
-    }
-  }
-
-  void _showSimpleConfirmation(
+  void _showUpdateConfirmation(
     BuildContext context,
     DocumentSnapshot doc,
     String firstName,
