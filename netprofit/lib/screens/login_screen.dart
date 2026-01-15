@@ -20,50 +20,39 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     try {
-      // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => Center(child: CircularProgressIndicator(color: Colors.white)),
+        builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.white)),
       );
 
-      // Initialize Google Sign-In
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: [
-          'email',
-          'profile',
-        ],
+        scopes: ['email', 'profile'],
       );
 
-      // Trigger Google Sign-In
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       
       if (googleUser == null) {
-        Navigator.pop(context); // Close loading
-        return; // User canceled the sign-in
+        Navigator.pop(context); 
+        return; 
       }
 
-      // Obtain auth details
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // Create credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase
       UserCredential userCredential = await _auth.signInWithCredential(credential);
       String userEmail = userCredential.user!.email!;
 
-      // Query Firestore for user data
       QuerySnapshot querySnapshot = await _firestore
           .collection('user-data')
           .where('email', isEqualTo: userEmail)
           .limit(1)
           .get();
 
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context); 
 
       if (querySnapshot.docs.isEmpty) {
         _showErrorPopup('No account found with this email. Please sign up first.');
@@ -72,16 +61,14 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // Get user data
       var userData = querySnapshot.docs.first.data() as Map<String, dynamic>;
       String userType = userData['user-type'] ?? 'user';
       String userName = userData['user-name'] ?? 'User';
 
-      // Show success popup
       _showSuccessPopup(userName, userType);
 
     } catch (e) {
-      Navigator.pop(context); // Close loading if open
+      if (Navigator.canPop(context)) Navigator.pop(context);
       _showErrorPopup('Login failed: ${e.toString()}');
     }
   }
@@ -93,18 +80,14 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 80),
             SizedBox(height: 16),
             Text(
               "Login Success!",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
               textAlign: TextAlign.center,
             ),
           ],
@@ -112,11 +95,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
 
-    // Wait 3 seconds then redirect
-    Future.delayed(Duration(seconds: 3), () {
-      Navigator.pop(context); // Close success dialog
+    Future.delayed(const Duration(seconds: 3), () {
+      if (Navigator.canPop(context)) Navigator.pop(context);
       
-      // Navigate based on user type
       Widget dashboardPage;
       if (userType == 'admin') {
         dashboardPage = AdminDashboard(userName: userName);
@@ -139,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.error_outline, color: Colors.red),
             SizedBox(width: 8),
@@ -150,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK", style: TextStyle(color: Colors.blue)),
+            child: const Text("OK", style: TextStyle(color: Colors.blue)),
           ),
         ],
       ),
@@ -162,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Solid Background Image
+          // 1. Background Image
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               image: DecorationImage(
                 image: AssetImage("assets/login-bg.jpg"),
                 fit: BoxFit.cover,
@@ -172,13 +153,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // 2. Animated Swimming Fish (Layered behind the form)
+          // 2. Animated Fish Layers
           SwimmingFish(fishImage: 'assets/fish1.png'),
           SwimmingFish(fishImage: 'assets/fish2.png'),
           SwimmingFish(fishImage: 'assets/fish3.png'),
           SwimmingFish(fishImage: 'assets/fish4.png'),
 
-          // 3. Content
+          // 3. Main Content
           Center(
             child: SingleChildScrollView(
               child: Column(
@@ -196,7 +177,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
                   
-                  // Glassy Form
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 30),
                     child: GlassContainer(
@@ -204,15 +184,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           const Text(
                             "Login",
-                            style: TextStyle(
-                              fontSize: 28, 
-                              fontWeight: FontWeight.bold, 
-                              color: Colors.white
-                            ),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           const SizedBox(height: 30),
                           
-                          // Google Sign In Button with Hover Effect (using InkWell)
                           InkWell(
                             onTap: _signInWithGoogle,
                             borderRadius: BorderRadius.circular(30),
@@ -223,12 +198,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(color: Colors.white30),
                               ),
-                              child: Row(
+                              child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.g_mobiledata, color: Colors.white, size: 20), // Google Icon
-                                  const SizedBox(width: 10),
-                                  const Text("Signin with Google", style: TextStyle(color: Colors.white)),
+                                  Icon(Icons.login, color: Colors.white, size: 20),
+                                  SizedBox(width: 10),
+                                  Text("Signin with Google", style: TextStyle(color: Colors.white)),
                                 ],
                               ),
                             ),
@@ -239,10 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpScreen())),
                             child: const Text(
                               "Don't have an account? Sign Up",
-                              style: TextStyle(
-                                color: Colors.white70, 
-                                decoration: TextDecoration.underline
-                              ),
+                              style: TextStyle(color: Colors.white70, decoration: TextDecoration.underline),
                             ),
                           )
                         ],
@@ -251,6 +223,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // 4. Footer Copyright Claim [Added as requested]
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "© ${DateTime.now().year} CoderixSoft Technologies",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Version 1.0.0",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
