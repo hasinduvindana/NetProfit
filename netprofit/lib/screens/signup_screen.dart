@@ -38,7 +38,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'last_name': _lName.text.trim(),
           'email': _email.text.trim(),
           'user-name': _fName.text.trim(),
-          'user-type': 'user',
+          'user-type': 'admin',
           'uid': userCredential.user!.uid,
           'created_at': FieldValue.serverTimestamp(),
         });

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:ui';
 import 'login_screen.dart';
 import 'manage-emp.dart';
@@ -27,22 +28,65 @@ class AdminDashboard extends StatelessWidget {
     return 'assets/evening.png';
   }
 
+  // --- UPDATED LOGOUT LOGIC ---
   Future<void> _logout(BuildContext context) async {
+    // 1. Show the glassy logout dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Colors.white.withOpacity(0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.blueAccent),
+              const SizedBox(height: 20),
+              const Text(
+                "Logging out...",
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
     try {
+      // 2. Wait for 3 seconds as requested
+      await Future.delayed(const Duration(seconds: 3));
+
+      // 3. Perform actual sign out
       await FirebaseAuth.instance.signOut();
       await GoogleSignIn().signOut();
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+
+      // 4. Redirect to login screen
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
     } catch (e) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+      if (context.mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginScreen()));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    DateTime now = DateTime.now();
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('NetProfit Admin', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text('NetProfit', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.white.withOpacity(0.05),
         elevation: 0,
         flexibleSpace: ClipRect(
@@ -66,71 +110,130 @@ class AdminDashboard extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              _buildHeader(),
-              const SizedBox(height: 20),
-              Expanded(
-                child: ListView(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                _buildHeader(),
+                const SizedBox(height: 20),
+                
+                // 2x2 Grid Arrangement
+                Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    _GlassyButton(
-                      icon: Icons.badge,
-                      title: 'Manage Employee',
-                      subtitle: 'Add and update staff records',
-                      onTap: () => Navigator.push(context, _createRoute(ManageEmp())),
-                    ),
-                    _GlassyButton(
-                      icon: Icons.group,
-                      title: 'Current Employees',
-                      subtitle: 'View active workforce',
-                      onTap: () => Navigator.push(context, _createRoute(ViewEmp())),
-                    ),
-                    _GlassyButton(
-                      icon: Icons.monetization_on,
-                      title: 'Salary Status',
-                      subtitle: 'Track payments and balances',
-                      onTap: () => Navigator.push(context, _createRoute(SalaryStatusPage())),
-                    ),
-                    _GlassyButton(
-                      icon: Icons.account_balance_wallet,
-                      title: 'Manage Expenses',
-                      subtitle: 'Fuel, Ice, and other costs',
-                      onTap: () => Navigator.push(context, _createRoute(ExpensesPage())),
-                    ),
-                  ],
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                    childAspectRatio: 1.1,
+                    children: [
+                      _GlassyGridButton(
+                        icon: Icons.badge,
+                        title: 'Manage Emp',
+                        onTap: () => Navigator.push(context, _createRoute(ManageEmp())),
+                      ),
+                      _GlassyGridButton(
+                        icon: Icons.group,
+                        title: 'Current Emp',
+                        onTap: () => Navigator.push(context, _createRoute(ViewEmp())),
+                      ),
+                      _GlassyGridButton(
+                        icon: Icons.monetization_on,
+                        title: 'Salary Status',
+                        onTap: () => Navigator.push(context, _createRoute(SalaryStatusPage())),
+                      ),
+                      _GlassyGridButton(
+                        icon: Icons.account_balance_wallet,
+                        title: 'Expenses',
+                        onTap: () => Navigator.push(context, _createRoute(ExpensesPage())),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // --- FOOTER SECTION ---
-              _buildFooter(),
-              const SizedBox(height: 10),
-            ],
+
+                const SizedBox(height: 30),
+                _buildStatsSection(now),
+                const SizedBox(height: 30),
+                _buildFooter(),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildStatsSection(DateTime now) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Monthly Overview", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Divider(color: Colors.white24, height: 25),
+                _buildStatItem("Total Employee Count", FirebaseFirestore.instance.collection('emp-data').snapshots(), isCount: true),
+                _buildStatItem("Salary Advance Payments", FirebaseFirestore.instance.collection('sal-adv')
+                    .where('year', isEqualTo: now.year).where('month', isEqualTo: now.month).snapshots()),
+                _buildStatItem("Payments for ICE", FirebaseFirestore.instance.collection('ice-cost')
+                    .where('year', isEqualTo: now.year).where('month', isEqualTo: now.month).snapshots()),
+                _buildStatItem("Payments for Fuel", FirebaseFirestore.instance.collection('fuel-cost')
+                    .where('year', isEqualTo: now.year).where('month', isEqualTo: now.month).snapshots()),
+                _buildStatItem("Other Payments", FirebaseFirestore.instance.collection('other-cost')
+                    .where('year', isEqualTo: now.year).where('month', isEqualTo: now.month).snapshots()),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, Stream<QuerySnapshot> stream, {bool isCount = false}) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: stream,
+      builder: (context, snapshot) {
+        String value = "...";
+        if (snapshot.hasData) {
+          if (isCount) {
+            value = snapshot.data!.docs.length.toString();
+          } else {
+            double total = snapshot.data!.docs.fold(0.0, (sum, doc) => sum + (doc['amount'] ?? 0.0));
+            value = "LKR ${total.toStringAsFixed(2)}";
+          }
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildFooter() {
     return Column(
       children: [
-        Text(
-          "© ${DateTime.now().year} CoderixSoft Technologies",
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
-            fontSize: 12,
-            letterSpacing: 0.5,
-          ),
-        ),
+        Text("© ${DateTime.now().year} CoderixSoft Technologies", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
         const SizedBox(height: 4),
-        Text(
-          "Version 1.0.0",
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.3),
-            fontSize: 10,
-          ),
-        ),
+        Text("Version 1.0.0", style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10)),
       ],
     );
   }
@@ -143,32 +246,19 @@ class AdminDashboard extends StatelessWidget {
         borderRadius: BorderRadius.circular(25),
         child: Stack(
           children: [
-            Image.asset(
-              _getGreetingImage(),
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(color: Colors.blueGrey.shade800),
-            ),
+            Image.asset(_getGreetingImage(), width: double.infinity, height: double.infinity, fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: Colors.blueGrey.shade800)),
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
               child: Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                ),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), border: Border.all(color: Colors.white.withOpacity(0.2))),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.blueAccent.withOpacity(0.6),
-                      child: Text(userName[0].toUpperCase(), style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
+                    CircleAvatar(radius: 30, backgroundColor: Colors.blueAccent.withOpacity(0.6),
+                      child: Text(userName[0].toUpperCase(), style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold))),
                     const SizedBox(width: 15),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(_getGreeting(), style: const TextStyle(color: Colors.white70, fontSize: 16)),
                         Text(userName, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
@@ -185,31 +275,21 @@ class AdminDashboard extends StatelessWidget {
   }
 
   Route _createRoute(Widget page) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(opacity: animation, child: child);
-      },
-    );
+    return PageRouteBuilder(pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) => FadeTransition(opacity: animation, child: child));
   }
 }
 
-// Custom Glassy Button
-class _GlassyButton extends StatefulWidget {
+class _GlassyGridButton extends StatefulWidget {
   final IconData icon;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
-
-  const _GlassyButton({required this.icon, required this.title, required this.subtitle, required this.onTap});
-
-  @override
-  State<_GlassyButton> createState() => _GlassyButtonState();
+  const _GlassyGridButton({required this.icon, required this.title, required this.onTap});
+  @override State<_GlassyGridButton> createState() => _GlassyGridButtonState();
 }
 
-class _GlassyButtonState extends State<_GlassyButton> {
+class _GlassyGridButtonState extends State<_GlassyGridButton> {
   bool _isHovered = false;
-
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -217,29 +297,27 @@ class _GlassyButtonState extends State<_GlassyButton> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 15),
-        transform: _isHovered ? (Matrix4.identity()..scale(1.02)) : Matrix4.identity(),
+        transform: _isHovered ? (Matrix4.identity()..scale(1.05)) : Matrix4.identity(),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: _isHovered ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.white.withOpacity(_isHovered ? 0.4 : 0.1)),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(widget.icon, color: Colors.blueAccent, size: 28),
+            child: InkWell(
+              onTap: widget.onTap,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _isHovered ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
-                title: Text(widget.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                subtitle: Text(widget.subtitle, style: const TextStyle(color: Colors.white60, fontSize: 13)),
-                trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                onTap: widget.onTap,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(widget.icon, color: Colors.blueAccent, size: 35),
+                    const SizedBox(height: 10),
+                    Text(widget.title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
               ),
             ),
           ),

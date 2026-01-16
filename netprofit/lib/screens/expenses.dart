@@ -43,37 +43,51 @@ class ExpensesPage extends StatelessWidget {
                   // Latest Total Expense Display
                   _buildTotalExpenseHeader(),
                   
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
                   
-                  // Navigation Buttons
-                  _buildGlassyButton(
-                    context, 
-                    "Salary Advances", 
-                    Icons.payments_outlined, 
-                    Colors.purpleAccent, 
-                    EmpSalAdv()
+                  // Navigation Grid (2x2 Arrangement)
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 15,
+                      mainAxisSpacing: 15,
+                      childAspectRatio: 1.1,
+                      children: [
+                        _buildGlassyGridButton(
+                          context, 
+                          "Salary\nAdvances", 
+                          Icons.payments_outlined, 
+                          Colors.purpleAccent, 
+                          EmpSalAdv()
+                        ),
+                        _buildGlassyGridButton(
+                          context, 
+                          "Ice\nCost", 
+                          Icons.ac_unit, 
+                          Colors.lightBlueAccent, 
+                          IceCostPage()
+                        ),
+                        _buildGlassyGridButton(
+                          context, 
+                          "Fuel\nCost", 
+                          Icons.local_gas_station, 
+                          Colors.orangeAccent, 
+                          FuelCostPage()
+                        ),
+                        _buildGlassyGridButton(
+                          context, 
+                          "Other\nExpenses", 
+                          Icons.more_horiz, 
+                          Colors.blueGrey, 
+                          OtherCostPage()
+                        ),
+                      ],
+                    ),
                   ),
-                  _buildGlassyButton(
-                    context, 
-                    "Ice Cost", 
-                    Icons.ac_unit, 
-                    Colors.lightBlueAccent, 
-                    IceCostPage()
-                  ),
-                  _buildGlassyButton(
-                    context, 
-                    "Fuel Cost", 
-                    Icons.local_gas_station, 
-                    Colors.orangeAccent, 
-                    FuelCostPage()
-                  ),
-                  _buildGlassyButton(
-                    context, 
-                    "Other Expenses", 
-                    Icons.more_horiz, 
-                    Colors.blueGrey, 
-                    OtherCostPage()
-                  ),
+
+                  // 3. Footer Copyright Section
+                  _buildFooter(),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -83,26 +97,15 @@ class ExpensesPage extends StatelessWidget {
     );
   }
 
-  /// Fetches the latest updated record from the monthly-tot-exp collection
   Widget _buildTotalExpenseHeader() {
     return StreamBuilder<QuerySnapshot>(
-      // Sort by a single timestamp field instead of year+month for better performance
       stream: FirebaseFirestore.instance
           .collection('monthly-tot-exp')
           .orderBy('timestamp', descending: true)
           .limit(1)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          // This usually indicates the Composite Index is still building
-          return const Center(
-            child: Text(
-              "Waiting for Firestore Index...", 
-              style: TextStyle(color: Colors.white70, fontSize: 14)
-            ),
-          );
-        }
-
+        if (snapshot.hasError) return const SizedBox();
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: Colors.redAccent));
         }
@@ -111,17 +114,8 @@ class ExpensesPage extends StatelessWidget {
 
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
           final doc = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-          
-          // Extracts 'total-exp' column value from the latest row
           final num totalValue = doc['total-exp'] ?? 0;
           totalDisplay = "LKR. ${totalValue.toDouble().toStringAsFixed(2)}";
-          
-          // Ensure timestamp field exists for future queries
-          if (!doc.containsKey('timestamp')) {
-            snapshot.data!.docs.first.reference.update({
-              'timestamp': FieldValue.serverTimestamp(),
-            });
-          }
         }
 
         return Container(
@@ -143,9 +137,8 @@ class ExpensesPage extends StatelessWidget {
                 totalDisplay, 
                 style: const TextStyle(
                   color: Colors.redAccent, 
-                  fontSize: 34, 
+                  fontSize: 32, 
                   fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black45, blurRadius: 10, offset: Offset(2, 2))]
                 )
               ),
             ],
@@ -155,50 +148,42 @@ class ExpensesPage extends StatelessWidget {
     );
   }
 
-  /// Custom Glassy Button Widget
-  Widget _buildGlassyButton(BuildContext context, String title, IconData icon, Color iconColor, Widget? targetPage) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: InkWell(
-            onTap: () {
-              if (targetPage != null) {
-                Navigator.push(context, _createSlideRoute(targetPage));
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("$title page coming soon!")),
-                );
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: iconColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: iconColor, size: 28),
+  Widget _buildGlassyGridButton(BuildContext context, String title, IconData icon, Color iconColor, Widget page) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: InkWell(
+          onTap: () => Navigator.push(context, _createSlideRoute(page)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.15)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 20),
-                  Text(
-                    title, 
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 18),
-                ],
-              ),
+                  child: Icon(icon, color: iconColor, size: 30),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title, 
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white, 
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w600,
+                    height: 1.2
+                  )
+                ),
+              ],
             ),
           ),
         ),
@@ -206,7 +191,29 @@ class ExpensesPage extends StatelessWidget {
     );
   }
 
-  /// Slide Animation for Navigation
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Text(
+          "© ${DateTime.now().year} CoderixSoft Technologies",
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.5),
+            fontSize: 12,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Version 1.0.0",
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.3),
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
+  }
+
   Route _createSlideRoute(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
